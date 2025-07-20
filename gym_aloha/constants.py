@@ -1,4 +1,5 @@
 from pathlib import Path
+import numpy as np
 
 ### Simulation envs fixed constants
 DT = 0.02  # 0.02 ms -> 1/0.2 = 50 hz
@@ -64,6 +65,25 @@ START_ARM_POSE = [
     0,
     0.02239,
     -0.02239,
+]
+
+START_ARM_POSE_TROSSEN_AI_STATIONARY = [
+    0.0,
+    np.pi / 12,
+    np.pi / 12,
+    0.0,
+    0.0,
+    0.0,
+    0.044,
+    0.044,
+    0.0,
+    np.pi / 12,
+    np.pi / 12,
+    0.0,
+    0.0,
+    0.0,
+    0.044,
+    0.044,
 ]
 
 ASSETS_DIR = Path(__file__).parent.resolve() / "assets"  # note: absolute path

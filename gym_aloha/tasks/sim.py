@@ -2,9 +2,12 @@ import collections
 
 import numpy as np
 from dm_control.suite import base
+from dm_control.mujoco.engine import Physics
+from gym_aloha.utils import get_observation_base
 
 from gym_aloha.constants import (
     START_ARM_POSE,
+    START_ARM_POSE_TROSSEN_AI_STATIONARY,
     normalize_puppet_gripper_position,
     normalize_puppet_gripper_velocity,
     unnormalize_puppet_gripper_position,
@@ -215,5 +218,209 @@ class InsertionTask(BimanualViperXTask):
         if peg_touch_socket and (not peg_touch_table) and (not socket_touch_table):  # peg and socket touching
             reward = 3
         if pin_touched:  # successful insertion
+            reward = 4
+        return reward
+
+################################TrossenAIStationary######################################
+
+class TrossenAIStationaryTask(base.Task):
+    """
+    A base task for bimanual manipulation with Trossen AI robotic arms in the Trossen AI Stationary Kit form factor.
+
+    :param random: Random seed for environment variability, defaults to ``None``.
+    :param onscreen_render: Whether to enable real-time rendering, defaults to ``False``.
+    :param cam_list: List of cameras to capture observations, defaults to ``[]``.
+    """
+
+    def __init__(
+        self,
+        random: int | None = None,
+        onscreen_render: bool = False,
+        cam_list: list[str] = [],
+    ):
+        super().__init__(random=random)
+        self.cam_list = cam_list
+        if self.cam_list == []:
+            self.cam_list = ["cam_high", "cam_low", "cam_left_wrist", "cam_right_wrist"]
+
+    def before_step(self, action: np.ndarray, physics: Physics) -> None:
+        """
+        Processes the action before passing it to the simulation.
+
+        :param action: The action array containing arm and gripper controls.
+        :param physics: The MuJoCo physics simulation instance.
+        """
+        left_arm_action = action[:6]
+        right_arm_action = action[8 : 8 + 6]
+        normalized_left_gripper_action = action[6]
+        normalized_right_gripper_action = action[8 + 6]
+
+        # Assign the processed gripper actions
+        left_gripper_action = normalized_left_gripper_action
+        right_gripper_action = normalized_right_gripper_action
+
+        # Ensure both gripper fingers act oppositely
+        full_left_gripper_action = [left_gripper_action, left_gripper_action]
+        full_right_gripper_action = [right_gripper_action, right_gripper_action]
+
+        # Concatenate the final action array
+        env_action = np.concatenate(
+            [
+                left_arm_action,
+                full_left_gripper_action,
+                right_arm_action,
+                full_right_gripper_action,
+            ]
+        )
+        super().before_step(env_action, physics)
+
+    def initialize_episode(self, physics: Physics) -> None:
+        """
+        Sets the state of the environment at the start of each episode.
+
+        :param physics: The MuJoCo physics simulation instance.
+        """
+        super().initialize_episode(physics)
+
+    @staticmethod
+    def get_env_state(physics: Physics) -> np.ndarray:
+        """
+        Retrieves the current state of the environment.
+
+        :param physics: The MuJoCo physics simulation instance.
+        :return: The environment state.
+        """
+        env_state = physics.data.qpos.copy()
+        return env_state
+
+    def get_position(self, physics: Physics) -> np.ndarray:
+        """
+        Retrieves the current joint positions.
+
+        :param physics: The MuJoCo physics simulation instance.
+        :return: The joint positions.
+        """
+        position = physics.data.qpos.copy()
+        return position[:16]
+
+    def get_velocity(self, physics: Physics) -> np.ndarray:
+        """
+        Retrieves the current joint velocities.
+
+        :param physics: The MuJoCo physics simulation instance.
+        :return: The joint velocities.
+        """
+        velocity = physics.data.qvel.copy()
+        return velocity[:16]
+
+    def get_observation(self, physics: Physics) -> collections.OrderedDict:
+        """
+        Collects the current observation from the environment.
+
+        :param physics: The MuJoCo physics simulation instance.
+        :return: An ordered dictionary containing joint positions, velocities, and environment state.
+        """
+        obs = get_observation_base(physics, self.cam_list)
+        obs["qpos"] = self.get_position(physics)
+        obs["qvel"] = self.get_velocity(physics)
+        obs["env_state"] = self.get_env_state(physics)
+        return obs
+
+    def get_reward(self, physics: Physics) -> int:
+        """
+        Computes the reward for the current timestep.
+
+        :param physics: The MuJoCo physics simulation instance.
+        :raises NotImplementedError: This method must be implemented in subclasses.
+        """
+        # return whether left gripper is holding the box
+        raise NotImplementedError
+
+
+class TrossenAIStationaryTransferCubeTask(TrossenAIStationaryTask):
+    """
+    A task where a cube must be transferred between two robotic arms.
+
+    :param random: Random seed for environment variability, defaults to ``None``.
+    :param onscreen_render: Whether to enable real-time rendering, defaults to ``False``.
+    :param cam_list: List of cameras to capture observations, defaults to ``[]``.
+    """
+
+    def __init__(
+        self,
+        random: int | None = None,
+        onscreen_render: bool = False,
+        cam_list: list[str] = [],
+    ):
+        super().__init__(
+            random=random,
+            onscreen_render=onscreen_render,
+            cam_list=cam_list,
+        )
+        self.max_reward = 4
+
+    def initialize_episode(self, physics: Physics) -> None:
+        """
+        Initializes the episode, resetting the robot's pose and cube position.
+
+        :param physics: The MuJoCo physics simulation instance.
+        """
+        # TODO Notice: this function does not randomize the env configuration. Instead, set
+        # BOX_POSE from outside reset qpos, control and box position
+        with physics.reset_context():
+            physics.named.data.qpos[:16] = START_ARM_POSE_TROSSEN_AI_STATIONARY
+            assert BOX_POSE[0] is not None
+            physics.named.data.qpos[-7:] = BOX_POSE[0]
+
+        super().initialize_episode(physics)
+
+    @staticmethod
+    def get_env_state(physics: Physics) -> np.ndarray:
+        """
+        Retrieves the environment state related to the cube position.
+
+        :param physics: The MuJoCo physics simulation instance.
+        :return: The environment state.
+        """
+        env_state = physics.data.qpos.copy()[16:]
+        return env_state
+
+    def get_reward(self, physics: Physics) -> int:
+        """
+        Computes the reward based on whether the cube has been transferred successfully.
+
+        :param physics: The MuJoCo physics simulation instance.
+        :return: The computed reward which is whether left gripper is holding the box
+        """
+        all_contact_pairs = []
+        for i_contact in range(physics.data.ncon):
+            id_geom_1 = physics.data.contact[i_contact].geom1
+            id_geom_2 = physics.data.contact[i_contact].geom2
+            name_geom_1 = physics.model.id2name(id_geom_1, "geom")
+            name_geom_2 = physics.model.id2name(id_geom_2, "geom")
+            contact_pair = (name_geom_1, name_geom_2)
+            all_contact_pairs.append(contact_pair)
+
+        touch_left_gripper = (
+            "red_box",
+            "left/gripper_follower_left",
+        ) in all_contact_pairs
+        touch_right_gripper = (
+            "red_box",
+            "right/gripper_follower_left",
+        ) in all_contact_pairs
+        touch_table = ("red_box", "table") in all_contact_pairs
+
+        reward = 0
+        if touch_right_gripper:
+            reward = 1
+        # lifted
+        if touch_right_gripper and not touch_table:
+            reward = 2
+        # attempted transfer
+        if touch_left_gripper:
+            reward = 3
+        # successful transfer
+        if touch_left_gripper and not touch_table:
             reward = 4
         return reward
