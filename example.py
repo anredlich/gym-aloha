@@ -6,7 +6,9 @@ from gym_aloha.utils import plot_observation_images     #anr
 import matplotlib.pyplot as plt                         #anr
 
 obs_type='pixels_agent_pos' #'pixels_agent_pos' #'pixels' is default
-env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
+#env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
+#             obs_type=obs_type)
+env = gym.make("gym_aloha/TrossenAIStationaryTransferCubeEE-v0",
              obs_type=obs_type)
 #env = gym.make("gym_aloha/AlohaTransferCube-v0",
 #               obs_type=obs_type)
@@ -14,7 +16,7 @@ observation, info = env.reset()
 frames = []
 
 cam_list = ["top"]
-if env.unwrapped.task == 'trossen_ai_stationary_transfer_cube':
+if env.unwrapped.task == 'trossen_ai_stationary_transfer_cube' or env.unwrapped.task == 'trossen_ai_stationary_transfer_cube_ee':
     cam_list = ["cam_high", "cam_low", "cam_left_wrist", "cam_right_wrist"]
 
 # setup plotting #anr added

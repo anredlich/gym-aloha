@@ -2,15 +2,18 @@ import collections
 
 import numpy as np
 from dm_control.suite import base
+from dm_control.mujoco.engine import Physics
+from gym_aloha.utils import get_observation_base
 
 from gym_aloha.constants import (
     PUPPET_GRIPPER_POSITION_CLOSE,
     START_ARM_POSE,
+    START_ARM_POSE_TROSSEN_AI_STATIONARY,
     normalize_puppet_gripper_position,
     normalize_puppet_gripper_velocity,
     unnormalize_puppet_gripper_position,
 )
-from gym_aloha.utils import sample_box_pose, sample_insertion_pose
+from gym_aloha.utils import sample_box_pose, sample_box_pose_trossen_ai_stationary, sample_insertion_pose #anr
 
 """
 Environment for simulated robot bi-manual manipulation, with end-effector control.
@@ -259,5 +262,221 @@ class InsertionEndEffectorTask(BimanualViperXEndEffectorTask):
         if peg_touch_socket and (not peg_touch_table) and (not socket_touch_table):  # peg and socket touching
             reward = 3
         if pin_touched:  # successful insertion
+            reward = 4
+        return reward
+
+################################TrossenAIStationary######################################
+
+class TrossenAIStationaryEETask(base.Task):
+    """
+    A base task for bimanual Cartesian manipulation with Trossen AI robotic arms in the Trossen AI
+    Stationary Kit form factor.
+
+    :param random: Randomization seed for environment initialization, defaults to ``None``.
+    :param onscreen_render: Whether to enable on-screen rendering, defaults to ``False``.
+    :param cam_list: List of cameras for observation capture, defaults to ``[]``.
+    """
+
+    def __init__(
+        self,
+        random: int | None = None,
+        onscreen_render=False,
+        cam_list: list[str] = [],
+    ):
+        super().__init__(random=random)
+        self.cam_list = cam_list
+        if self.cam_list == []:
+            self.cam_list = ["cam_high", "cam_low", "cam_left_wrist", "cam_right_wrist"]
+
+    def before_step(self, action: np.ndarray, physics: Physics) -> None:
+        """
+        Apply the action to the robotic arms before stepping the simulation.
+
+        :param action: The action vector containing position and gripper commands.
+        :param physics: The simulation physics instance.
+        """
+        a_len = len(action) // 2
+        action_left = action[:a_len]
+        action_right = action[a_len:]
+
+        # set mocap position and quat
+        # left
+        np.copyto(physics.data.mocap_pos[0], action_left[:3])
+        np.copyto(physics.data.mocap_quat[0], action_left[3:7])
+        # right
+        np.copyto(physics.data.mocap_pos[1], action_right[:3])
+        np.copyto(physics.data.mocap_quat[1], action_right[3:7])
+
+        physics.data.qpos[6] = action_left[7]
+        physics.data.qpos[7] = action_left[7]
+        physics.data.qpos[14] = action_right[7]
+        physics.data.qpos[15] = action_right[7]
+
+    def initialize_robots(self, physics: Physics) -> None:
+        """
+        Initialize the robots by resetting joint positions and aligning mocap bodies with end-effectors.
+
+        :param physics: The simulation physics engine.
+        """
+        # reset joint position
+        physics.named.data.qpos[:12] = START_ARM_POSE_TROSSEN_AI_STATIONARY[:6] + START_ARM_POSE_TROSSEN_AI_STATIONARY[8:14]
+
+        # reset mocap to align with end effector
+        np.copyto(physics.data.mocap_pos[0], [-0.19657, -0.019, 0.25021])
+        np.copyto(physics.data.mocap_quat[0], [1, 0, 0, 0])
+        # right
+        np.copyto(physics.data.mocap_pos[1], [0.19657, -0.019, 0.25021])
+        np.copyto(physics.data.mocap_quat[1], [1, 0, 0, 0])
+
+    def initialize_episode(self, physics: Physics):
+        """
+        Set up the environment state at the beginning of each episode.
+
+        :param physics: The simulation physics engine.
+        """
+        """Sets the state of the environment at the start of each episode."""
+        super().initialize_episode(physics)
+
+    @staticmethod
+    def get_env_state(physics: Physics) -> np.ndarray:
+        """
+        Retrieve the environment state.
+
+        :param physics: The simulation physics engine.
+        :raises NotImplementedError: This function must be implemented in derived classes.
+        """
+        raise NotImplementedError
+
+    def get_position(self, physics: Physics) -> np.ndarray:
+        """
+        Get the current joint positions of the robot.
+
+        :param physics: The simulation physics engine.
+        :return: The joint positions.
+        """
+        positions = physics.data.qpos.copy()
+        return positions[:16]
+
+    def get_velocity(self, physics: Physics) -> np.ndarray:
+        """
+        Get the current joint velocities of the robot.
+
+        :param physics: The simulation physics engine.
+        :return: The joint velocities.
+        """
+        velocities = physics.data.qvel.copy()
+        return velocities[:16]
+
+    def get_observation(self, physics: Physics) -> dict:
+        """
+        Retrieve the robot's observation data, including joint positions, velocities, and camera images.
+
+        :param physics: The simulation physics engine.
+        :return: The current observation state.
+        """
+        obs = get_observation_base(physics, self.cam_list)
+        obs["qpos"] = self.get_position(physics)
+        obs["qvel"] = self.get_velocity(physics)
+        obs["env_state"] = self.get_env_state(physics)
+        obs["mocap_pose_left"] = np.concatenate(
+            [physics.data.mocap_pos[0], physics.data.mocap_quat[0]]
+        ).copy()
+        obs["mocap_pose_right"] = np.concatenate(
+            [physics.data.mocap_pos[1], physics.data.mocap_quat[1]]
+        ).copy()
+        obs["gripper_ctrl"] = physics.data.ctrl.copy()
+        return obs
+
+    def get_reward(self, physics: Physics) -> int:
+        """
+        Compute the task-specific reward.
+
+        :param physics: The simulation physics engine.
+        :raises NotImplementedError: This function must be implemented in derived classes.
+        """
+        raise NotImplementedError
+
+
+class TransferCubeEETask(TrossenAIStationaryEETask):
+    """
+    A task where a cube must be transferred between two robotic arms.
+
+    :param random: Random seed for environment variability, defaults to ``None``.
+    :param onscreen_render: Whether to enable real-time rendering, defaults to ``False``.
+    :param cam_list: List of cameras to capture observations, defaults to ``None``.
+    """
+
+    def __init__(
+        self,
+        random: int | None = None,
+        onscreen_render: bool = False,
+        cam_list: list[str] = [],
+    ):
+        super().__init__(
+            random=random,
+            onscreen_render=onscreen_render,
+            cam_list=cam_list,
+        )
+        self.max_reward = 4
+
+    def initialize_episode(self, physics: Physics) -> None:
+        """
+        Set up the simulation environment at the start of an episode.
+
+        :param physics: The simulation physics engine.
+        """
+        self.initialize_robots(physics)
+        # randomize box position
+        cube_pose = sample_box_pose_trossen_ai_stationary()
+        box_start_idx = physics.model.name2id("red_box_joint", "joint")
+        np.copyto(physics.data.qpos[box_start_idx : box_start_idx + 7], cube_pose)
+
+        super().initialize_episode(physics)
+
+    @staticmethod
+    def get_env_state(physics: Physics) -> np.ndarray:
+        """
+        Retrieve the environment state specific to this task.
+
+        :param physics: The simulation physics engine.
+        :return: The state of the environment.
+        """
+        env_state = physics.data.qpos.copy()[16:]
+        return env_state
+
+    def get_reward(self, physics: Physics) -> int:
+        """
+        Compute the reward based on the cube's interaction with the robot and the environment.
+
+        :param physics: The simulation physics engine.
+        :return: The computed reward.
+        """
+        # return whether left gripper is holding the box
+        all_contact_pairs = []
+        for i_contact in range(physics.data.ncon):
+            id_geom_1 = physics.data.contact[i_contact].geom1
+            id_geom_2 = physics.data.contact[i_contact].geom2
+            name_geom_1 = physics.model.id2name(id_geom_1, "geom")
+            name_geom_2 = physics.model.id2name(id_geom_2, "geom")
+            contact_pair = (name_geom_1, name_geom_2)
+            all_contact_pairs.append(contact_pair)
+        touch_left_gripper = (
+            "red_box",
+            "left/gripper_follower_left",
+        ) in all_contact_pairs
+        touch_right_gripper = (
+            "red_box",
+            "right/gripper_follower_left",
+        ) in all_contact_pairs
+        touch_table = ("red_box", "table") in all_contact_pairs
+
+        reward = 0
+        if touch_right_gripper:
+            reward = 1
+        if touch_right_gripper and not touch_table:  # lifted
+            reward = 2
+        if touch_left_gripper:  # attempted transfer
+            reward = 3
+        if touch_left_gripper and not touch_table:  # successful transfer
             reward = 4
         return reward

@@ -14,6 +14,7 @@ from gym_aloha.tasks.sim import BOX_POSE, InsertionTask, TransferCubeTask, Tross
 from gym_aloha.tasks.sim_end_effector import (
     InsertionEndEffectorTask,
     TransferCubeEndEffectorTask,
+    TransferCubeEETask
 )
 from gym_aloha.utils import sample_box_pose, sample_insertion_pose, sample_box_pose_trossen_ai_stationary 
 
@@ -45,7 +46,7 @@ class AlohaEnv(gym.Env):
 
         #anr, added cam_list
         cam_list=["top"]
-        if task == 'trossen_ai_stationary_transfer_cube':
+        if task == 'trossen_ai_stationary_transfer_cube' or task == 'trossen_ai_stationary_transfer_cube_ee':
             cam_list=["cam_high", "cam_low", "cam_left_wrist", "cam_right_wrist"]
 
         #anr moved here so it can be used for 'agent_pos'
@@ -60,10 +61,13 @@ class AlohaEnv(gym.Env):
                 shape=(ctrl_range.shape[0],),
                 dtype=np.float32
             ) 
-        self.action_space = spaces.Box(low=-1, high=1, shape=(len(ACTIONS),), dtype=np.float32)
+        elif task == 'trossen_ai_stationary_transfer_cube_ee':
+            self.action_space = spaces.Box(low=-.1, high=.1, shape=(16,), dtype=np.float32)
+
+        #self.action_space = spaces.Box(low=-1, high=1, shape=(len(ACTIONS),), dtype=np.float32)
         #anr added if trossen:
-        if task == 'trossen_ai_stationary_transfer_cube':
-            self.action_space = spaces.Box(low=-np.pi, high=np.pi, shape=(16,), dtype=np.float32)
+        #if task == 'trossen_ai_stationary_transfer_cube':
+        #    self.action_space = spaces.Box(low=-np.pi, high=np.pi, shape=(16,), dtype=np.float32)
 
         if self.obs_type == "state":
             raise NotImplementedError()
@@ -149,6 +153,8 @@ class AlohaEnv(gym.Env):
         # TODO(rcadene): render and visualizer several cameras (e.g. angle, front_close)
         if self.task == 'trossen_ai_stationary_transfer_cube': #anr use most top-like camera
             image = self._env.physics.render(height=height, width=width, camera_id="cam_high")
+        elif self.task == 'trossen_ai_stationary_transfer_cube_ee': #anr use most top-like camera
+            image = self._env.physics.render(height=height, width=width, camera_id="cam_high")
         else:
             image = self._env.physics.render(height=height, width=width, camera_id="top")
         return image
@@ -165,6 +171,10 @@ class AlohaEnv(gym.Env):
             xml_path = ASSETS_DIR / "trossen_ai_scene_joint.xml"
             physics = mujoco.Physics.from_xml_path(str(xml_path))
             task = TrossenAIStationaryTransferCubeTask()
+        elif task_name == "trossen_ai_stationary_transfer_cube_ee":
+            xml_path = ASSETS_DIR / "trossen_ai_scene.xml"
+            physics = mujoco.Physics.from_xml_path(str(xml_path))
+            task = TransferCubeEETask()
         elif task_name == "insertion":
             xml_path = ASSETS_DIR / "bimanual_viperx_insertion.xml"
             physics = mujoco.Physics.from_xml_path(str(xml_path))
@@ -220,6 +230,8 @@ class AlohaEnv(gym.Env):
         if self.task == "transfer_cube":
             BOX_POSE[0] = sample_box_pose(seed)  # used in sim reset
         elif self.task == "trossen_ai_stationary_transfer_cube":  #anr added
+            BOX_POSE[0] = sample_box_pose_trossen_ai_stationary() #anr added
+        elif self.task == "trossen_ai_stationary_transfer_cube_ee":  #anr added
             BOX_POSE[0] = sample_box_pose_trossen_ai_stationary() #anr added
         elif self.task == "insertion":
             BOX_POSE[0] = np.concatenate(sample_insertion_pose(seed))  # used in sim reset
