@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt                         #anr
 obs_type='pixels_agent_pos' #'pixels_agent_pos' #'pixels' is default
 #env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
 #             obs_type=obs_type)
-env = gym.make("gym_aloha/TrossenAIStationaryTransferCubeEE-v0",
-             obs_type=obs_type)
-#env = gym.make("gym_aloha/AlohaTransferCube-v0",
-#               obs_type=obs_type)
+#env = gym.make("gym_aloha/TrossenAIStationaryTransferCubeEE-v0",
+#             obs_type=obs_type)
+env = gym.make("gym_aloha/AlohaTransferCube-v0",
+               obs_type=obs_type)
 observation, info = env.reset()
 frames = []
 

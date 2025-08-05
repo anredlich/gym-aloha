@@ -18,7 +18,7 @@ def sample_box_pose(seed=None):
     cube_quat = np.array([1, 0, 0, 0])
     return np.concatenate([cube_position, cube_quat])
 
-def sample_box_pose_trossen_ai_stationary() -> np.ndarray:
+def sample_box_pose_trossen_ai_stationary(seed=None) -> np.ndarray:
     """
     Generate a random pose for a cube within predefined position ranges.
 
@@ -29,8 +29,11 @@ def sample_box_pose_trossen_ai_stationary() -> np.ndarray:
     y_range = [-0.15, 0.15]
     z_range = [0.0125, 0.0125]
 
+    rng = np.random.RandomState(seed)
+
     ranges = np.vstack([x_range, y_range, z_range])
-    cube_position = np.random.uniform(ranges[:, 0], ranges[:, 1])
+    #cube_position = np.random.uniform(ranges[:, 0], ranges[:, 1])
+    cube_position = rng.uniform(ranges[:, 0], ranges[:, 1])
 
     cube_quat = np.array([1, 0, 0, 0])
     return np.concatenate([cube_position, cube_quat])

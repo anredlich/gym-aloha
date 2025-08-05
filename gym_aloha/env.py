@@ -119,13 +119,13 @@ class AlohaEnv(gym.Env):
                         )
                         for cam in cam_list
                     }),
-                    # "agent_pos": spaces.Box(
-                    #     low=-1000.0,
-                    #     high=1000.0,
-                    #     shape=(len(JOINTS),),
-                    #     dtype=np.float64,
-                    # ),
-                    "agent_pos": self.action_space,
+                    "agent_pos": spaces.Box(
+                        low=-1000.0,
+                        high=1000.0,
+                        shape=(self.action_space.shape[0],), #anr was len(JOINTS)
+                        dtype=np.float64,
+                    ),
+                    #"agent_pos": self.action_space,
                 }
             )
 
@@ -225,14 +225,15 @@ class AlohaEnv(gym.Env):
         if seed is not None:
             self._env.task.random.seed(seed)
             self._env.task._random = np.random.RandomState(seed)
+            self._env.task.seed=seed #anr save the actual seed for use in reset()
 
         # TODO(rcadene): do not use global variable for this
         if self.task == "transfer_cube":
             BOX_POSE[0] = sample_box_pose(seed)  # used in sim reset
         elif self.task == "trossen_ai_stationary_transfer_cube":  #anr added
-            BOX_POSE[0] = sample_box_pose_trossen_ai_stationary() #anr added
+            BOX_POSE[0] = sample_box_pose_trossen_ai_stationary(seed) #anr added
         elif self.task == "trossen_ai_stationary_transfer_cube_ee":  #anr added
-            BOX_POSE[0] = sample_box_pose_trossen_ai_stationary() #anr added
+            BOX_POSE[0] = sample_box_pose_trossen_ai_stationary(seed) #anr added
         elif self.task == "insertion":
             BOX_POSE[0] = np.concatenate(sample_insertion_pose(seed))  # used in sim reset
         else:
@@ -243,6 +244,8 @@ class AlohaEnv(gym.Env):
         observation = self._format_raw_obs(raw_obs.observation)
 
         info = {"is_success": False}
+        info['raw_obs']=raw_obs.observation #anr added 8/2/25
+
         return observation, info
 
     def step(self, action):
@@ -255,6 +258,7 @@ class AlohaEnv(gym.Env):
         terminated = is_success = reward == 4
 
         info = {"is_success": is_success}
+        info['raw_obs']=raw_obs #anr added 8/2/25
 
         observation = self._format_raw_obs(raw_obs)
 

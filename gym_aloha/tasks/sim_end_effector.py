@@ -287,6 +287,7 @@ class TrossenAIStationaryEETask(base.Task):
         self.cam_list = cam_list
         if self.cam_list == []:
             self.cam_list = ["cam_high", "cam_low", "cam_left_wrist", "cam_right_wrist"]
+        self.seed=random #anr save the actual seed
 
     def before_step(self, action: np.ndarray, physics: Physics) -> None:
         """
@@ -427,7 +428,7 @@ class TransferCubeEETask(TrossenAIStationaryEETask):
         """
         self.initialize_robots(physics)
         # randomize box position
-        cube_pose = sample_box_pose_trossen_ai_stationary()
+        cube_pose = sample_box_pose_trossen_ai_stationary(self.seed) #anr added self.seed
         box_start_idx = physics.model.name2id("red_box_joint", "joint")
         np.copyto(physics.data.qpos[box_start_idx : box_start_idx + 7], cube_pose)
 
