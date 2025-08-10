@@ -2,7 +2,7 @@
 
 A gym environment for ALOHA
 
-anr-robot (default) is my stable branch.
+anr-robot is my stable branch.
 
 compared to gym-aloha it adds:   
 TrossenAIStationary robot, including mujoco files   
