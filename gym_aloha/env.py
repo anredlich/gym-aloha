@@ -55,19 +55,19 @@ class AlohaEnv(gym.Env):
         #anr use actual action_space:
         if task == 'trossen_ai_stationary_transfer_cube':
             ctrl_range = self._env.physics.model.actuator_ctrlrange
+            low=ctrl_range[:, 0].astype(np.float32),   # Lower bounds
+            high=ctrl_range[:, 1].astype(np.float32),  # Upper bounds
+            #anr reduce to len(ACTIONS) to be consistent with old transfer cube:
+            low = np.delete(low, [7, 15])
+            high = np.delete(high, [7, 15])
             self.action_space = spaces.Box(
-                low=ctrl_range[:, 0].astype(np.float32),   # Lower bounds
-                high=ctrl_range[:, 1].astype(np.float32),  # Upper bounds
-                shape=(ctrl_range.shape[0],),
+                low=low,   # Lower bounds
+                high=high,  # Upper bounds
+                shape=(low.shape[0],),
                 dtype=np.float32
-            ) 
+            )
         elif task == 'trossen_ai_stationary_transfer_cube_ee':
             self.action_space = spaces.Box(low=-.1, high=.1, shape=(16,), dtype=np.float32)
-
-        #self.action_space = spaces.Box(low=-1, high=1, shape=(len(ACTIONS),), dtype=np.float32)
-        #anr added if trossen:
-        #if task == 'trossen_ai_stationary_transfer_cube':
-        #    self.action_space = spaces.Box(low=-np.pi, high=np.pi, shape=(16,), dtype=np.float32)
 
         if self.obs_type == "state":
             raise NotImplementedError()
@@ -76,20 +76,9 @@ class AlohaEnv(gym.Env):
                 high=np.array([255] * len(JOINTS)),  # ???
                 dtype=np.float64,
             )
-        # elif self.obs_type == "pixels":
-        #     self.observation_space = spaces.Dict(
-        #         {
-        #             "top": spaces.Box(
-        #                 low=0,
-        #                 high=255,
-        #                 shape=(self.observation_height, self.observation_width, 3),
-        #                 dtype=np.uint8,
-        #             )
-        #         }
-        #     )
-        elif self.obs_type == "pixels": #anr added
+        elif self.obs_type == "pixels": #anr added cam in place of top
             self.observation_space = spaces.Dict({
-                cam: spaces.Box(
+                cam: spaces.Box( #anr was top 
                     low=0,
                     high=255,
                     shape=(self.observation_height, self.observation_width, 3),
@@ -100,18 +89,8 @@ class AlohaEnv(gym.Env):
         elif self.obs_type == "pixels_agent_pos":
             self.observation_space = spaces.Dict(
                 {
-                    # "pixels": spaces.Dict(
-                    #     {
-                    #         "top": spaces.Box(
-                    #             low=0,
-                    #             high=255,
-                    #             shape=(self.observation_height, self.observation_width, 3),
-                    #             dtype=np.uint8,
-                    #         )
-                    #     }
-                    # ),
-                    "pixels": spaces.Dict({ #anr added
-                        cam: spaces.Box(
+                    "pixels": spaces.Dict({ #anr added cam in place of top
+                        cam: spaces.Box( #was top:
                             low=0,
                             high=255,
                             shape=(self.observation_height, self.observation_width, 3),
@@ -122,17 +101,13 @@ class AlohaEnv(gym.Env):
                     "agent_pos": spaces.Box(
                         low=-1000.0,
                         high=1000.0,
-                        shape=(self.action_space.shape[0],), #anr was len(JOINTS)
+                        shape=(self.action_space.shape[0],), #anr was len(JOINTS) but _ee is size 16, not 14
                         dtype=np.float64,
                     ),
-                    #"agent_pos": self.action_space,
                 }
             )
 
-        #self.action_space = spaces.Box(low=-1, high=1, shape=(len(ACTIONS),), dtype=np.float32)
-        # #anr added if trossen:
-        # if task == 'trossen_ai_stationary_transfer_cube':
-        #     self.action_space = spaces.Box(low=-np.pi, high=np.pi, shape=(16,), dtype=np.float32)
+        #self.action_space = spaces.Box(low=-1, high=1, shape=(len(ACTIONS),), dtype=np.float32) #anr moved up
 
     def render(self):
         return self._render(visualize=True)
@@ -201,17 +176,17 @@ class AlohaEnv(gym.Env):
         if self.obs_type == "state":
             raise NotImplementedError()
         elif self.obs_type == "pixels":
-            if 'top' in raw_obs["images"].keys():                                   #anr added
+            if 'top' in raw_obs["images"].keys():                                   #anr if added
                 obs = {"top": raw_obs["images"]["top"].copy()}
-            else:                                                                   #anr added
-                obs = {key: img.copy() for key, img in raw_obs["images"].items()}   #anr added
+            else:                                                                   #anr else added
+                obs = {key: img.copy() for key, img in raw_obs["images"].items()}   #anr added for multiple cameras
         elif self.obs_type == "pixels_agent_pos":
-            if 'top' in raw_obs["images"].keys():                                   #anr added
+            if 'top' in raw_obs["images"].keys():                                   #anr if added
                 obs = {
                     "pixels": {"top": raw_obs["images"]["top"].copy()},
                     "agent_pos": raw_obs["qpos"],
                 }
-            else:                                                                   #anr added
+            else:                                                                   #anr added for multiple cameras
                  obs = {
                      "pixels": {key: img.copy() for key, img in raw_obs["images"].items()},
                      "agent_pos": raw_obs["qpos"],
@@ -228,23 +203,24 @@ class AlohaEnv(gym.Env):
             self._env.task.seed=seed #anr save the actual seed for use in reset()
 
         # TODO(rcadene): do not use global variable for this
-        if self.task == "transfer_cube":
-            BOX_POSE[0] = sample_box_pose(seed)  # used in sim reset
-        elif self.task == "trossen_ai_stationary_transfer_cube":  #anr added
-            BOX_POSE[0] = sample_box_pose_trossen_ai_stationary(seed) #anr added
-        elif self.task == "trossen_ai_stationary_transfer_cube_ee":  #anr added
-            BOX_POSE[0] = sample_box_pose_trossen_ai_stationary(seed) #anr added
-        elif self.task == "insertion":
-            BOX_POSE[0] = np.concatenate(sample_insertion_pose(seed))  # used in sim reset
-        else:
-            raise ValueError(self.task)
+        if not options == 'do_not_reset_BOX_POSE':
+            if self.task == "transfer_cube":
+                BOX_POSE[0] = sample_box_pose(seed)  # used in sim reset
+            elif self.task == "trossen_ai_stationary_transfer_cube":  #anr added
+                BOX_POSE[0] = sample_box_pose_trossen_ai_stationary(seed) #anr added
+            elif self.task == "trossen_ai_stationary_transfer_cube_ee":  #anr added
+                BOX_POSE[0] = sample_box_pose_trossen_ai_stationary(seed) #anr added
+            elif self.task == "insertion":
+                BOX_POSE[0] = np.concatenate(sample_insertion_pose(seed))  # used in sim reset
+            else:
+                raise ValueError(self.task)
 
         raw_obs = self._env.reset()
 
         observation = self._format_raw_obs(raw_obs.observation)
 
         info = {"is_success": False}
-        info['raw_obs']=raw_obs.observation #anr added 8/2/25
+        info['raw_obs']=raw_obs.observation #anr added
 
         return observation, info
 

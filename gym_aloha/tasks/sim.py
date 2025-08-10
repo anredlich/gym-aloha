@@ -250,10 +250,16 @@ class TrossenAIStationaryTask(base.Task):
         :param action: The action array containing arm and gripper controls.
         :param physics: The MuJoCo physics simulation instance.
         """
-        left_arm_action = action[:6]
-        right_arm_action = action[8 : 8 + 6]
-        normalized_left_gripper_action = action[6]
-        normalized_right_gripper_action = action[8 + 6]
+        if action.shape[0]==16:
+            left_arm_action = action[:6]
+            right_arm_action = action[8 : 8 + 6]
+            normalized_left_gripper_action = action[6]
+            normalized_right_gripper_action = action[8 + 6]
+        elif action.shape[0]==14: #anr to be consistent with BimanualViperXTask above
+            left_arm_action = action[:6]
+            right_arm_action = action[7 : 7 + 6]
+            normalized_left_gripper_action = action[6]
+            normalized_right_gripper_action = action[7 + 6]
 
         # Assign the processed gripper actions
         left_gripper_action = normalized_left_gripper_action
@@ -301,7 +307,9 @@ class TrossenAIStationaryTask(base.Task):
         :return: The joint positions.
         """
         position = physics.data.qpos.copy()
-        return position[:16]
+        position = np.delete(position, [7, 15]) #anr to be consitent with BimanualViperXTask above
+        return position[:14]
+        #return position[:16]
 
     def get_velocity(self, physics: Physics) -> np.ndarray:
         """
@@ -311,7 +319,9 @@ class TrossenAIStationaryTask(base.Task):
         :return: The joint velocities.
         """
         velocity = physics.data.qvel.copy()
-        return velocity[:16]
+        velocity = np.delete(velocity, [7, 15]) #anr to be consitent with BimanualViperXTask above
+        return velocity[:14]
+        #return velocity[:16]
 
     def get_observation(self, physics: Physics) -> collections.OrderedDict:
         """
