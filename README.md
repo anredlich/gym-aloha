@@ -2,6 +2,15 @@
 
 A gym environment for ALOHA
 
+This fork adds:   
+
+TrossenAIStationary robot, including mujoco files   
+TrossenAIStationaryTransferCube-v0   
+TrossenAIStationaryTransferCubeEE-v0 (EE=end effector)  
+
+See updated example.py to try out.  
+
+
 <img src="http://remicadene.com/assets/gif/aloha_act.gif" width="50%" alt="ACT policy on ALOHA env"/>
 
 
