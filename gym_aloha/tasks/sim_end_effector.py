@@ -1,6 +1,7 @@
 import collections
 
 import numpy as np
+from typing import Any
 from dm_control.suite import base
 from dm_control.mujoco.engine import Physics
 from gym_aloha.utils import get_observation_base
@@ -419,6 +420,9 @@ class TransferCubeEETask(TrossenAIStationaryEETask):
             cam_list=cam_list,
         )
         self.max_reward = 4
+        # self.options: dict[str, Any] | None = None
+        self.box_size: list[float] | None = None
+        self.box_color: list[float] | None = None
 
     def initialize_episode(self, physics: Physics) -> None:
         """
@@ -432,6 +436,19 @@ class TransferCubeEETask(TrossenAIStationaryEETask):
         box_start_idx = physics.model.name2id("red_box_joint", "joint")
         np.copyto(physics.data.qpos[box_start_idx : box_start_idx + 7], cube_pose)
 
+        red_box_geom_id = physics.model.name2id('red_box', 'geom')
+        if isinstance(self.box_size,list) and len(self.box_size) == 3:
+            physics.named.model.geom_size['red_box'] = self.box_size.copy()
+        if isinstance(self.box_color, list) and len(self.box_color) == 4:
+           physics.named.model.geom_rgba['red_box'] = self.box_color.copy()
+
+        # if isinstance(self.options, dict): #anr added for task options 
+        #     red_box_geom_id = physics.model.name2id('red_box', 'geom')
+        #     if 'box_size' in self.options and isinstance(self.options['box_size'], list) and len(self.options['box_size']) == 3:
+        #         physics.named.model.geom_size['red_box'] = self.options['box_size'].copy()
+        #     if 'box_color' in self.options and isinstance(self.options['box_color'], list) and len(self.options['box_color']) == 4:
+        #         physics.named.model.geom_rgba['red_box'] = self.options['box_color'].copy()
+    
         super().initialize_episode(physics)
 
     @staticmethod

@@ -6,12 +6,12 @@ from gym_aloha.utils import plot_observation_images     #anr
 import matplotlib.pyplot as plt                         #anr
 
 obs_type='pixels_agent_pos' #'pixels_agent_pos' #'pixels' is default
-#env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
-#             obs_type=obs_type)
+env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
+             obs_type=obs_type,box_size=[0.02,0.02,0.02],box_color=[0,1,0,1],tabletop='wood')
 #env = gym.make("gym_aloha/TrossenAIStationaryTransferCubeEE-v0",
-#             obs_type=obs_type)
-env = gym.make("gym_aloha/AlohaTransferCube-v0",
-               obs_type=obs_type)
+#             obs_type=obs_type,box_size=[0.05,0.05,0.05],box_color=[0,1,0,1])
+#env = gym.make("gym_aloha/AlohaTransferCube-v0",
+#               obs_type=obs_type)
 observation, info = env.reset()
 frames = []
 

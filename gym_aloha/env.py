@@ -1,5 +1,6 @@
 import gymnasium as gym
 import numpy as np
+import copy
 from dm_control import mujoco
 from dm_control.rl import control
 from gymnasium import spaces
@@ -32,6 +33,9 @@ class AlohaEnv(gym.Env):
         observation_height=480,
         visualization_width=640,
         visualization_height=480,
+        box_size=None,
+        box_color=None,
+        tabletop=None,
     ):
         super().__init__()
         self.task = task
@@ -43,6 +47,13 @@ class AlohaEnv(gym.Env):
         self.visualization_height = visualization_height
 
         self._env = self._make_env_task(self.task)
+
+        if hasattr(self._env.task,'box_size') and isinstance(box_size, list):
+            self._env.task.box_size=box_size.copy()
+        if hasattr(self._env.task,'box_color') and isinstance(box_color, list):
+            self._env.task.box_color=box_color.copy()
+        if hasattr(self._env.task,'tabletop') and isinstance(tabletop, str):
+            self._env.task.tabletop=tabletop
 
         #anr, added cam_list
         cam_list=["top"]
@@ -201,6 +212,13 @@ class AlohaEnv(gym.Env):
             self._env.task.random.seed(seed)
             self._env.task._random = np.random.RandomState(seed)
             self._env.task.seed=seed #anr save the actual seed for use in reset()
+
+        # if isinstance(options, dict): #anr added for task options 
+        #     if hasattr(self._env.task, 'options'):
+        #         if options is None or isinstance(options, dict):
+        #             self._env.task.options = copy.deepcopy(options)
+        #     if 'do_not_reset_BOX_POSE' in options:
+        #         options='do_not_reset_BOX_POSE'
 
         # TODO(rcadene): do not use global variable for this
         if not options == 'do_not_reset_BOX_POSE':

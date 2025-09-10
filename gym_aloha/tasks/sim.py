@@ -1,9 +1,11 @@
 import collections
 
 import numpy as np
+from typing import Any
 from dm_control.suite import base
 from dm_control.mujoco.engine import Physics
 from gym_aloha.utils import get_observation_base
+import mujoco
 
 from gym_aloha.constants import (
     START_ARM_POSE,
@@ -368,6 +370,10 @@ class TrossenAIStationaryTransferCubeTask(TrossenAIStationaryTask):
             cam_list=cam_list,
         )
         self.max_reward = 4
+        #self.options: dict[str, Any] | None = None
+        self.box_size: list[float] | None = None
+        self.box_color: list[float] | None = None
+        self.tabletop: str | None =None
 
     def initialize_episode(self, physics: Physics) -> None:
         """
@@ -382,8 +388,48 @@ class TrossenAIStationaryTransferCubeTask(TrossenAIStationaryTask):
             assert BOX_POSE[0] is not None
             physics.named.data.qpos[-7:] = BOX_POSE[0]
 
+        red_box_geom_id = physics.model.name2id('red_box', 'geom')
+        if isinstance(self.box_size,list) and len(self.box_size) == 3:
+            physics.named.model.geom_size['red_box'] = self.box_size.copy()
+        if isinstance(self.box_color, list) and len(self.box_color) == 4:
+           physics.named.model.geom_rgba['red_box'] = self.box_color.copy()
+
+        if isinstance(self.tabletop,str):
+            self.switch_tabletop_material(physics=physics,material=self.tabletop)
+
+        # if isinstance(self.options, dict): #anr added for task options 
+        #     red_box_geom_id = physics.model.name2id('red_box', 'geom')
+        #     if 'box_size' in self.options and isinstance(self.options['box_size'], list) and len(self.options['box_size']) == 3:
+        #         physics.named.model.geom_size['red_box'] = self.options['box_size'].copy()
+        #     if 'box_color' in self.options and isinstance(self.options['box_color'], list) and len(self.options['box_color']) == 4:
+        #         physics.named.model.geom_rgba['red_box'] = self.options['box_color'].copy()
+
         super().initialize_episode(physics)
 
+    def switch_tabletop_material(self, physics: Physics, material: str = 'plain'):
+        if not material=='wood' and not material=='plain':
+            return
+        #material='wood' or 'plain'               
+        try:
+            # Access the underlying MuJoCo model
+            mj_model = physics.model.ptr            
+            # Get material IDs
+            wood_material_id = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_MATERIAL, "wood_table")
+            plain_material_id = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_MATERIAL, "table")            
+            # Get mesh IDs
+            tabletop_mesh_id = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_MESH, "tabletop")
+            #tablelegs_mesh_id = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_MESH, "tablelegs")            
+            # Find geoms by their mesh ID
+            target_material = wood_material_id if material == 'wood' else plain_material_id            
+            for i in range(mj_model.ngeom):
+                # Check if this is a mesh geom and matches our target meshes
+                if mj_model.geom_type[i] == mujoco.mjtGeom.mjGEOM_MESH and mj_model.geom_dataid[i] == tabletop_mesh_id: # or mj_model.geom_dataid[i] == tablelegs_mesh_id)):
+                    # Switch the material
+                    mj_model.geom_matid[i] = target_material                    
+            print(f"Switched table material to {material}")            
+        except Exception as e:
+            print(f"Failed to switch material: {e}")
+            
     @staticmethod
     def get_env_state(physics: Physics) -> np.ndarray:
         """
