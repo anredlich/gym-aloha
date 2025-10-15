@@ -42,12 +42,23 @@
     <texture name="carpet_texture" type="2d" file="carpeteven.png"/>
     <material name="carpet" texture="carpet_texture" texuniform="true" texrepeat="1 1" reflectance="0.0001"/>
     <material name="white_wall" rgba="0.9725 0.9608 0.8706 1"/>
-  </asset>
+    <texture name="back_wall_texture" type="2d" file="back_wall_original_25pct.png"/> <!-- back_wall_original -->
+    <material name="back_wall" texture="back_wall_texture" texuniform="true" texrepeat="1 1" reflectance="0.0001"/>
+    <texture name="left_wall_texture" type="2d" file="left_wall_corrected_25pct.png"/>
+    <material name="left_wall" texture="left_wall_texture" texuniform="true" texrepeat="1 1" reflectance="0.0001"/>
+    <texture name="right_wall_texture" type="2d" file="right_wall_flipped_25pct.png"/>
+    <material name="right_wall" texture="right_wall_texture" texuniform="true" texrepeat="1 1" reflectance="0.0001"/>
+    <texture name="my_desktop_texture" type="2d" file="my_desktop_25pct.png"/>
+    <material name="my_desktop" texture="my_desktop_texture" texuniform="true" texrepeat="1 1" reflectance="0.0001" rgba="0.55 0.5 0.4 1.0"/>    
+</asset>
 
   <default>
     <default class="frame">
       <geom group="1" type="mesh" material="black"/>
     </default>
+    <default class="backdrop">
+      <geom rgba="1 1 1 0"/>  <!-- Change this ONE number to switch all -->
+    </default>   
   </default>
 
   <worldbody>
@@ -60,10 +71,20 @@
     <body name="box" pos="0.0 0.0 0.0125">
         <joint name="red_box_joint" type="free" frictionloss="0.01" />
         <inertial pos="0 0 0" mass="0.05" diaginertia="0.002 0.002 0.002" />
-        <geom condim="4" solimp="2 1 0.01" solref="0.01 1" friction="5.0 4 0.01" pos="0 0 0" size="0.0125 0.0125 0.0125" type="box" name="red_box" rgba="1 0 0 1" />
+        <!-- <geom condim="4" solimp="2 1 0.01" solref="0.01 1" friction="5.0 4 0.01" pos="0 0 0" size="0.0125 0.0125 0.0125" type="box" name="red_box" rgba="1 0 0 1" /> -->
+        <geom condim="4" solimp="2 1 0.01" solref="0.001 1" friction="5.0 4 0.01" pos="0 0 0" size="0.0125 0.0125 0.0125" type="box" name="red_box" rgba="1 0 0 1" />
     </body>
-    <geom name="white_wall" pos="0 0.5 0.05" size="10 0.05 1" type="box" material="white_wall"/>
-
+    <geom name="white_wall" pos="0 0.5 0.05" size="10 0.05 1" type="box" material="white_wall"/> <!-- rgba="1 1 1 0" -->
+    <!-- <geom name="white_wall_plane" pos="0 0.5 0.05" size="10 1 0.01" type="plane" quat="0.707107 0.707107 0 0" material="back_wall" rgba="1 1 1 1"/> -->   
+    <geom name="white_wall_plane_bottom" pos="0 0.5 -0.55" size="2 0.4 0.01" type="plane" quat="0.707107 0.707107 0 0" material="back_wall" class="backdrop"/>
+    <geom name="white_wall_plane_top" pos="0 0.5 0.45" size="2 0.6 0.01" type="plane" quat="0.707107 0.707107 0 0" material="back_wall" class="backdrop"/>
+    <!-- Left side wall -->
+    <geom name="left_wall_bottom" pos="-0.8 0 -0.55" size="0.5 0.4 0.01" type="plane" quat="0.5 0.5 0.5 0.5" material="left_wall" class="backdrop"/> 
+    <geom name="left_wall_top" pos="-0.8 0 0.45" size="0.5 0.6 0.01" type="plane" quat="0.5 0.5 0.5 0.5" material="left_wall" class="backdrop"/>
+    <!-- Right side wall -->
+    <geom name="right_wall_bottom" pos="0.8 0 -0.55" size="0.5 0.4 0.01" type="plane" quat="0.5 -0.5 -0.5 0.5" material="right_wall" class="backdrop"/>  
+    <geom name="right_wall_top" pos="0.8 0 0.45" size="0.5 0.6 0.01" type="plane" quat="0.5 -0.5 -0.5 0.5" material="right_wall" class="backdrop"/>  
+    
     <geom name="floor" size="20 20 0.05" type="plane" material="carpet" pos="0 0 -.75"/>
     <site name="worldref" pos="0 0 -0.75"/>
     <camera name="cam_high" pos="0 -0.303794 1.02524" euler="0 0 0.4363" resolution="1920 1080" mode="fixed"  focal="1.93e-3 1.93e-3" sensorsize="0.0037 0.0021"/>

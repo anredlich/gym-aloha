@@ -372,8 +372,13 @@ class TrossenAIStationaryTransferCubeTask(TrossenAIStationaryTask):
         self.max_reward = 4
         #self.options: dict[str, Any] | None = None
         self.box_size: list[float] | None = None
+        self.box_pos: list[float] | None = None
         self.box_color: list[float] | None = None
+        self.arms_pos: list[float] | None = None
+        self.arms_ref: list[float] | None = None
         self.tabletop: str | None =None
+        self.backdrop: str | None =None
+        self.lighting: list | None = None
 
     def initialize_episode(self, physics: Physics) -> None:
         """
@@ -388,14 +393,38 @@ class TrossenAIStationaryTransferCubeTask(TrossenAIStationaryTask):
             assert BOX_POSE[0] is not None
             physics.named.data.qpos[-7:] = BOX_POSE[0]
 
-        red_box_geom_id = physics.model.name2id('red_box', 'geom')
         if isinstance(self.box_size,list) and len(self.box_size) == 3:
             physics.named.model.geom_size['red_box'] = self.box_size.copy()
+        if isinstance(self.box_pos, list) and len(self.box_pos) == 3:
+            if self.box_pos[2]<0.0:
+                physics.named.data.qpos['red_box_joint'][2]=-self.box_pos[2] #this only overrides the z component of BOX_POSE!
+            else:
+                physics.named.data.qpos['red_box_joint'][:3] = self.box_pos.copy() #this overrides BOX_POSE
         if isinstance(self.box_color, list) and len(self.box_color) == 4:
            physics.named.model.geom_rgba['red_box'] = self.box_color.copy()
+        left_root_body_id = physics.model.name2id('left/root', 'body')
+        right_root_body_id = physics.model.name2id('right/root', 'body')
+        if isinstance(self.arms_pos, list) and len(self.arms_pos) == 6:
+            physics.model.body_pos[left_root_body_id] = self.arms_pos[:3].copy()
+            physics.model.body_pos[right_root_body_id] = self.arms_pos[3:].copy()
+            #physics.forward()
+        if isinstance(self.arms_ref, list) and len(self.arms_ref) == 12:
+            for i in range(6):
+                physics.named.model.qpos0[f'left/joint_{i}'] = self.arms_ref[i]
+                physics.named.model.qpos0[f'right/joint_{i}'] = self.arms_ref[i+6]
+        if isinstance(self.lighting,list) and isinstance(self.lighting[0],list) and len(self.lighting[0]) == 3 and isinstance(self.lighting[1],list) and len(self.lighting[1]) == 3:
+            if self.lighting[0][0]>0.0:
+                physics.named.model.light_diffuse['top_light_1'][:] = self.lighting[0].copy()
+                physics.named.model.light_diffuse['top_light_2'][:] = self.lighting[0].copy()
+            if self.lighting[1][0]>0.0:
+                physics.model.vis.headlight.diffuse[:] = self.lighting[1].copy()
+                physics.model.vis.headlight.ambient[:] = self.lighting[1].copy()
 
         if isinstance(self.tabletop,str):
             self.switch_tabletop_material(physics=physics,material=self.tabletop)
+
+        if isinstance(self.backdrop,str):
+            self.switch_backdrop(physics=physics,backdrop=self.backdrop)
 
         # if isinstance(self.options, dict): #anr added for task options 
         #     red_box_geom_id = physics.model.name2id('red_box', 'geom')
@@ -407,29 +436,54 @@ class TrossenAIStationaryTransferCubeTask(TrossenAIStationaryTask):
         super().initialize_episode(physics)
 
     def switch_tabletop_material(self, physics: Physics, material: str = 'plain'):
-        if not material=='wood' and not material=='plain':
+        if not material=='wood'  and not material=='plain'  and not material=='my_desktop':
             return
-        #material='wood' or 'plain'               
+        #material='wood' or 'plain' or 'my_desktop'              
         try:
             # Access the underlying MuJoCo model
             mj_model = physics.model.ptr            
             # Get material IDs
             wood_material_id = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_MATERIAL, "wood_table")
             plain_material_id = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_MATERIAL, "table")            
+            my_desktop_material_id = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_MATERIAL, "my_desktop")
             # Get mesh IDs
             tabletop_mesh_id = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_MESH, "tabletop")
             #tablelegs_mesh_id = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_MESH, "tablelegs")            
             # Find geoms by their mesh ID
-            target_material = wood_material_id if material == 'wood' else plain_material_id            
+            target_material = wood_material_id if material == 'wood' else my_desktop_material_id if material == 'my_desktop' else plain_material_id            
             for i in range(mj_model.ngeom):
                 # Check if this is a mesh geom and matches our target meshes
                 if mj_model.geom_type[i] == mujoco.mjtGeom.mjGEOM_MESH and mj_model.geom_dataid[i] == tabletop_mesh_id: # or mj_model.geom_dataid[i] == tablelegs_mesh_id)):
                     # Switch the material
                     mj_model.geom_matid[i] = target_material                    
-            print(f"Switched table material to {material}")            
+            #print(f"Switched table material to {material}")            
         except Exception as e:
             print(f"Failed to switch material: {e}")
-            
+
+    def switch_backdrop(self, physics: Physics, backdrop: str = 'none'):
+        if not backdrop=='my_backdrop' and not backdrop=='none':
+            return
+        #backdrop='my_backdrop' or 'none'               
+        try:
+            if backdrop=='my_backdrop':
+                physics.named.model.geom_rgba['white_wall'][3] = 0.0
+                physics.named.model.geom_rgba['white_wall_plane_bottom'][3] = 1.0
+                physics.named.model.geom_rgba['white_wall_plane_top'][3] = 1.0
+                physics.named.model.geom_rgba['left_wall_bottom'][3] = 1.0
+                physics.named.model.geom_rgba['left_wall_top'][3] = 1.0
+                physics.named.model.geom_rgba['right_wall_bottom'][3] = 1.0
+                physics.named.model.geom_rgba['right_wall_top'][3] = 1.0
+            elif backdrop=='none':
+                physics.named.model.geom_rgba['white_wall'][3] = 1.0
+                physics.named.model.geom_rgba['white_wall_plane_bottom'][3] = 0.0
+                physics.named.model.geom_rgba['white_wall_plane_top'][3] = 0.0
+                physics.named.model.geom_rgba['left_wall_bottom'][3] = 0.0
+                physics.named.model.geom_rgba['left_wall_top'][3] = 0.0
+                physics.named.model.geom_rgba['right_wall_bottom'][3] = 0.0
+                physics.named.model.geom_rgba['right_wall_top'][3] = 0.0
+        except Exception as e:
+            print(f"Failed to switch backdrop: {e}")
+
     @staticmethod
     def get_env_state(physics: Physics) -> np.ndarray:
         """

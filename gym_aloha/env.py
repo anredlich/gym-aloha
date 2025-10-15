@@ -34,8 +34,14 @@ class AlohaEnv(gym.Env):
         visualization_width=640,
         visualization_height=480,
         box_size=None,
+        box_pos=None,
         box_color=None,
+        arms_pos=None,
+        arms_ref=None,
         tabletop=None,
+        backdrop=None,
+        lighting=None,
+        rand_ops=None,
     ):
         super().__init__()
         self.task = task
@@ -50,10 +56,20 @@ class AlohaEnv(gym.Env):
 
         if hasattr(self._env.task,'box_size') and isinstance(box_size, list):
             self._env.task.box_size=box_size.copy()
+        if hasattr(self._env.task,'box_pos') and isinstance(box_pos, list):
+            self._env.task.box_pos=box_pos.copy()
         if hasattr(self._env.task,'box_color') and isinstance(box_color, list):
             self._env.task.box_color=box_color.copy()
+        if hasattr(self._env.task,'arms_pos') and isinstance(arms_pos, list):
+            self._env.task.arms_pos=arms_pos.copy()
+        if hasattr(self._env.task,'arms_ref') and isinstance(arms_ref, list):
+            self._env.task.arms_ref=arms_ref.copy()
         if hasattr(self._env.task,'tabletop') and isinstance(tabletop, str):
             self._env.task.tabletop=tabletop
+        if hasattr(self._env.task,'backdrop') and isinstance(backdrop, str):
+            self._env.task.backdrop=backdrop
+        if hasattr(self._env.task,'lighting') and isinstance(lighting, list):
+            self._env.task.lighting=lighting.copy()
 
         #anr, added cam_list
         cam_list=["top"]
