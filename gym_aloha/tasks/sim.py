@@ -416,10 +416,16 @@ class TrossenAIStationaryTransferCubeTask(TrossenAIStationaryTask):
             if self.lighting[0][0]>0.0:
                 physics.named.model.light_diffuse['top_light_1'][:] = self.lighting[0].copy()
                 physics.named.model.light_diffuse['top_light_2'][:] = self.lighting[0].copy()
+            else:
+                physics.named.model.light_diffuse['top_light_1'][:] = [0.7, 0.7, 0.7]
+                physics.named.model.light_diffuse['top_light_2'][:] = [0.7, 0.7, 0.7]
             if self.lighting[1][0]>0.0:
                 physics.model.vis.headlight.diffuse[:] = self.lighting[1].copy()
                 physics.model.vis.headlight.ambient[:] = self.lighting[1].copy()
-
+            else:
+                physics.model.vis.headlight.diffuse[:] = [0.6, 0.65, 0.75]
+                physics.model.vis.headlight.ambient[:] = [0.5, 0.5, 0.6]
+ 
         if isinstance(self.tabletop,str):
             self.switch_tabletop_material(physics=physics,material=self.tabletop)
 

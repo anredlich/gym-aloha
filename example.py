@@ -7,19 +7,19 @@ import matplotlib.pyplot as plt                         #anr
 from gym_aloha.tasks.sim import BOX_POSE
 
 obs_type='pixels_agent_pos' #'pixels_agent_pos' #'pixels' is default
-env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
-             obs_type=obs_type,
-             box_size=[0.02,0.02,0.02],
-             box_pos=[0.0,0.0,0.02],
-             box_color=[0,1,0,1],
-             #tabletop='wood',
-             arms_pos=[-0.4575, 0.0, 0.02, 0.4575, 0.0, 0.02], #best match to real?
-             arms_ref=[0,-0.015,0.015,0,0,0,0,-0.025,0.025,0,0,0], #best match to real?
-             )
+# env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
+#              obs_type=obs_type,
+#              box_size=[0.02,0.02,0.02],
+#              box_pos=[0.0,0.0,0.02],
+#              box_color=[0,1,0,1],
+#              #tabletop='wood',
+#              arms_pos=[-0.4575, 0.0, 0.02, 0.4575, 0.0, 0.02], #best match to real?
+#              arms_ref=[0,-0.015,0.015,0,0,0,0,-0.025,0.025,0,0,0], #best match to real?
+#              )
 #env = gym.make("gym_aloha/TrossenAIStationaryTransferCubeEE-v0",
 #             obs_type=obs_type,box_size=[0.05,0.05,0.05],box_color=[0,1,0,1])
-#env = gym.make("gym_aloha/AlohaTransferCube-v0",
-#               obs_type=obs_type)
+env = gym.make("gym_aloha/AlohaTransferCube-v0",
+               obs_type=obs_type)
 
 random_box_position=False
 if random_box_position:

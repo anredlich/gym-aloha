@@ -314,20 +314,27 @@ class TrossenAIStationaryEETask(base.Task):
         physics.data.qpos[14] = action_right[7]
         physics.data.qpos[15] = action_right[7]
 
-    def initialize_robots(self, physics: Physics) -> None:
+    def initialize_robots(self, physics: Physics, arms_pos: list[float] | None = None) -> None:
         """
         Initialize the robots by resetting joint positions and aligning mocap bodies with end-effectors.
 
         :param physics: The simulation physics engine.
         """
         # reset joint position
-        physics.named.data.qpos[:12] = START_ARM_POSE_TROSSEN_AI_STATIONARY[:6] + START_ARM_POSE_TROSSEN_AI_STATIONARY[8:14]
+        ##physics.named.data.qpos[:12] = START_ARM_POSE_TROSSEN_AI_STATIONARY[:6] + START_ARM_POSE_TROSSEN_AI_STATIONARY[8:14] #anr->
+        physics.named.data.qpos[:16] = START_ARM_POSE_TROSSEN_AI_STATIONARY #anr <-
+
+        left_yshift=-0.019
+        right_yshift=-0.019
+        if isinstance(arms_pos, list) and len(arms_pos) == 6:
+            left_yshift = arms_pos[1]
+            right_yshift = arms_pos[4]
 
         # reset mocap to align with end effector
-        np.copyto(physics.data.mocap_pos[0], [-0.19657, -0.019, 0.25021])
+        np.copyto(physics.data.mocap_pos[0], [-0.19657, left_yshift, 0.25021]) #[-0.19657, -0.019, 0.25021])
         np.copyto(physics.data.mocap_quat[0], [1, 0, 0, 0])
         # right
-        np.copyto(physics.data.mocap_pos[1], [0.19657, -0.019, 0.25021])
+        np.copyto(physics.data.mocap_pos[1], [0.19657, right_yshift, 0.25021]) #[0.19657, -0.019, 0.25021])
         np.copyto(physics.data.mocap_quat[1], [1, 0, 0, 0])
 
     def initialize_episode(self, physics: Physics):
@@ -436,7 +443,7 @@ class TransferCubeEETask(TrossenAIStationaryEETask):
 
         :param physics: The simulation physics engine.
         """
-        self.initialize_robots(physics)
+        self.initialize_robots(physics,self.arms_pos)
         # randomize box position
         cube_pose = sample_box_pose_trossen_ai_stationary(self.seed) #anr added self.seed
         box_start_idx = physics.model.name2id("red_box_joint", "joint")
@@ -466,9 +473,15 @@ class TransferCubeEETask(TrossenAIStationaryEETask):
             if self.lighting[0][0]>0.0:
                 physics.named.model.light_diffuse['top_light_1'][:] = self.lighting[0].copy()
                 physics.named.model.light_diffuse['top_light_2'][:] = self.lighting[0].copy()
+            else:
+                physics.named.model.light_diffuse['top_light_1'][:] = [0.7, 0.7, 0.7]
+                physics.named.model.light_diffuse['top_light_2'][:] = [0.7, 0.7, 0.7]
             if self.lighting[1][0]>0.0:
                 physics.model.vis.headlight.diffuse[:] = self.lighting[1].copy()
                 physics.model.vis.headlight.ambient[:] = self.lighting[1].copy()
+            else:
+                physics.model.vis.headlight.diffuse[:] = [0.6, 0.65, 0.75]
+                physics.model.vis.headlight.ambient[:] = [0.5, 0.5, 0.6]
 
         # if isinstance(self.options, dict): #anr added for task options 
         #     red_box_geom_id = physics.model.name2id('red_box', 'geom')
