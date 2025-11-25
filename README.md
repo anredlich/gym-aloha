@@ -2,16 +2,29 @@
 
 A gym environment for ALOHA
 
+Note: this readme is under construction.  
+
 This fork adds:
- 
-TrossenAIStationary robot, including mujoco files   
+
+[Trossen AI Stationary robot](https://www.trossenrobotics.com/) simulation   
 TrossenAIStationaryTransferCube-v0   
 TrossenAIStationaryTransferCubeEE-v0 (EE=end effector)    
 
-See updated example.py to try out.   
+Some new env options for the TrossenAIStationary Transfer Cube:   
+- box_size  
+- box_pos   
+- box_color   
+- arms_pos  
+- arms_ref  
+- tabletop  
+- backdrop  
+- lighting   
+
+The TrossenAI task classes and mujoco files were cut and paste from https://github.com/TrossenRobotics/trossen_arm_mujoco
+
+See updated example.py and new example_viewer.py to try out.   
 
 <img src="http://remicadene.com/assets/gif/aloha_act.gif" width="50%" alt="ACT policy on ALOHA env"/>
-
 
 ## Installation
 
@@ -20,11 +33,22 @@ Create a virtual environment with Python 3.10 and activate it, e.g. with [`minic
 conda create -y -n aloha python=3.10 && conda activate aloha
 ```
 
-Install gym-aloha:
+Install this fork of gym-aloha::
 ```bash
-pip install gym-aloha
+pip install git+https://github.com/anredlich/gym-aloha.git
 ```
 
+Or for local development:
+```bash
+git clone https://github.com/anredlich/gym-aloha.git
+cd gym-aloha
+pip install -e .
+```
+
+**Requirements:**
+- Python 3.10
+- MuJoCo >= 3.3.0
+- dm-control >= 1.0.30
 
 ## Quickstart
 
@@ -34,16 +58,54 @@ import imageio
 import gymnasium as gym
 import numpy as np
 import gym_aloha
+from gym_aloha.utils import plot_observation_images
+import matplotlib.pyplot as plt
 
-env = gym.make("gym_aloha/AlohaInsertion-v0")
+#uncomment only one of the gym.make() below
+obs_type='pixels_agent_pos' #'pixels' is default
+env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
+             obs_type=obs_type,
+             #comment options for default
+             box_size=[0.02,0.02,0.02],
+             #box_pos=[0.0,0.0,-0.02],
+             box_color=[0,1,0,1], #default is [1,0,0,1]
+             tabletop='wood', #'my_desktop' default is black
+             backdrop='my_backdrop', #default is none
+             #lighting=[[0.3,0.3,0.3],[0.3,0.3,0.3]],
+             #for sim to real calibration:
+             #arms_pos=[-0.4575, 0.0, 0.02, 0.4575, 0.0, 0.02], 
+             #arms_ref=[0,-0.015,0.015,0,0,0,0,-0.025,0.025,0,0,0],
+             )
+#env = gym.make("gym_aloha/TrossenAIStationaryTransferCubeEE-v0",
+#             obs_type=obs_type,box_size=[0.02,0.02,0.02],box_color=[0,1,0,1])
+#env = gym.make("gym_aloha/AlohaTransferCube-v0",
+#               obs_type=obs_type)
+
 observation, info = env.reset()
 frames = []
 
-for _ in range(1000):
+cam_list = ["top"]
+if env.unwrapped.task == 'trossen_ai_stationary_transfer_cube' or env.unwrapped.task == 'trossen_ai_stationary_transfer_cube_ee':
+    cam_list = ["cam_high", "cam_low", "cam_left_wrist", "cam_right_wrist"]
+
+# setup plotting
+if obs_type=='pixels_agent_pos':
+    im_observation=observation['pixels']
+plt_imgs = plot_observation_images(im_observation, cam_list)
+plt.pause(0.02)
+
+for _ in range(100):
     action = env.action_space.sample()
     observation, reward, terminated, truncated, info = env.step(action)
-    image = env.render()
+    image = env.render() #uses top or cam_high
     frames.append(image)
+
+    if obs_type=='pixels_agent_pos':
+        observation=observation['pixels']
+    for i in range(len(cam_list)): #anr added
+        plt_imgs[i].set_data(observation[cam_list[i]])
+
+    plt.pause(0.02)
 
     if terminated or truncated:
         observation, info = env.reset()
@@ -191,3 +253,7 @@ pre-commit
 ## Acknowledgment
 
 gym-aloha is adapted from [ALOHA](https://tonyzhaozh.github.io/aloha/)
+
+TrossenAI code and files adapted from:
+https://github.com/TrossenRobotics/trossen_arm_mujoco
+
