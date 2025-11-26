@@ -20,11 +20,15 @@ Some new env options for the TrossenAIStationary Transfer Cube:
 - backdrop  
 - lighting   
 
-The TrossenAI task classes and mujoco files were cut and paste from https://github.com/TrossenRobotics/trossen_arm_mujoco
+The TrossenAI task classes and mujoco files were cut and pasted from https://github.com/TrossenRobotics/trossen_arm_mujoco
 
-See updated example.py and new example_viewer.py to try out.   
+See updated example.py and new example_viewer.py.   
 
+<img src="trossen_ai_stationary_transfer_cube.gif" width="70%" alt="TrossenAI Stationary TransferCube demo"/>
+
+<!--
 <img src="http://remicadene.com/assets/gif/aloha_act.gif" width="50%" alt="ACT policy on ALOHA env"/>
+-->
 
 ## Installation
 
