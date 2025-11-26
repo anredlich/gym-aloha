@@ -1,6 +1,7 @@
 import collections
 
 import numpy as np
+from typing import Any
 from dm_control.suite import base
 from dm_control.mujoco.engine import Physics
 from gym_aloha.utils import get_observation_base
@@ -313,20 +314,27 @@ class TrossenAIStationaryEETask(base.Task):
         physics.data.qpos[14] = action_right[7]
         physics.data.qpos[15] = action_right[7]
 
-    def initialize_robots(self, physics: Physics) -> None:
+    def initialize_robots(self, physics: Physics, arms_pos: list[float] | None = None) -> None:
         """
         Initialize the robots by resetting joint positions and aligning mocap bodies with end-effectors.
 
         :param physics: The simulation physics engine.
         """
         # reset joint position
-        physics.named.data.qpos[:12] = START_ARM_POSE_TROSSEN_AI_STATIONARY[:6] + START_ARM_POSE_TROSSEN_AI_STATIONARY[8:14]
+        ##physics.named.data.qpos[:12] = START_ARM_POSE_TROSSEN_AI_STATIONARY[:6] + START_ARM_POSE_TROSSEN_AI_STATIONARY[8:14] #anr->
+        physics.named.data.qpos[:16] = START_ARM_POSE_TROSSEN_AI_STATIONARY #anr <-
+
+        left_yshift=-0.019
+        right_yshift=-0.019
+        if isinstance(arms_pos, list) and len(arms_pos) == 6:
+            left_yshift = arms_pos[1]
+            right_yshift = arms_pos[4]
 
         # reset mocap to align with end effector
-        np.copyto(physics.data.mocap_pos[0], [-0.19657, -0.019, 0.25021])
+        np.copyto(physics.data.mocap_pos[0], [-0.19657, left_yshift, 0.25021]) #[-0.19657, -0.019, 0.25021])
         np.copyto(physics.data.mocap_quat[0], [1, 0, 0, 0])
         # right
-        np.copyto(physics.data.mocap_pos[1], [0.19657, -0.019, 0.25021])
+        np.copyto(physics.data.mocap_pos[1], [0.19657, right_yshift, 0.25021]) #[0.19657, -0.019, 0.25021])
         np.copyto(physics.data.mocap_quat[1], [1, 0, 0, 0])
 
     def initialize_episode(self, physics: Physics):
@@ -419,6 +427,15 @@ class TransferCubeEETask(TrossenAIStationaryEETask):
             cam_list=cam_list,
         )
         self.max_reward = 4
+        # self.options: dict[str, Any] | None = None
+        self.box_size: list[float] | None = None
+        self.box_pos: list[float] | None = None
+        self.box_color: list[float] | None = None
+        self.arms_pos: list[float] | None = None
+        self.arms_ref: list[float] | None = None
+        self.tabletop: str | None =None
+        self.backdrop: str | None =None
+        self.lighting: list | None = None
 
     def initialize_episode(self, physics: Physics) -> None:
         """
@@ -426,12 +443,53 @@ class TransferCubeEETask(TrossenAIStationaryEETask):
 
         :param physics: The simulation physics engine.
         """
-        self.initialize_robots(physics)
+        self.initialize_robots(physics,self.arms_pos)
         # randomize box position
         cube_pose = sample_box_pose_trossen_ai_stationary(self.seed) #anr added self.seed
         box_start_idx = physics.model.name2id("red_box_joint", "joint")
         np.copyto(physics.data.qpos[box_start_idx : box_start_idx + 7], cube_pose)
 
+        red_box_geom_id = physics.model.name2id('red_box', 'geom')
+        if isinstance(self.box_size,list) and len(self.box_size) == 3:
+            physics.named.model.geom_size['red_box'] = self.box_size.copy()
+        if isinstance(self.box_pos, list) and len(self.box_pos) == 3:
+            if self.box_pos[2]<0.0:
+                physics.named.data.qpos['red_box_joint'][2]=-self.box_pos[2] #this only overrides the z component of BOX_POSE!
+            else:
+                physics.named.data.qpos['red_box_joint'][:3] = self.box_pos.copy() #this overrides BOX_POSE
+        if isinstance(self.box_color, list) and len(self.box_color) == 4:
+           physics.named.model.geom_rgba['red_box'] = self.box_color.copy()
+        left_root_body_id = physics.model.name2id('left/root', 'body')
+        right_root_body_id = physics.model.name2id('right/root', 'body')
+        if isinstance(self.arms_pos, list) and len(self.arms_pos) == 6:
+            physics.model.body_pos[left_root_body_id] = self.arms_pos[:3].copy()
+            physics.model.body_pos[right_root_body_id] = self.arms_pos[3:].copy()
+            #physics.forward()
+        if isinstance(self.arms_ref, list) and len(self.arms_ref) == 12:
+            for i in range(6):
+                physics.named.model.qpos0[f'left/joint_{i}'] = self.arms_ref[i]
+                physics.named.model.qpos0[f'right/joint_{i}'] = self.arms_ref[i+6]
+        if isinstance(self.lighting,list) and isinstance(self.lighting[0],list) and len(self.lighting[0]) == 3 and isinstance(self.lighting[1],list) and len(self.lighting[1]) == 3:
+            if self.lighting[0][0]>0.0:
+                physics.named.model.light_diffuse['top_light_1'][:] = self.lighting[0].copy()
+                physics.named.model.light_diffuse['top_light_2'][:] = self.lighting[0].copy()
+            else:
+                physics.named.model.light_diffuse['top_light_1'][:] = [0.7, 0.7, 0.7]
+                physics.named.model.light_diffuse['top_light_2'][:] = [0.7, 0.7, 0.7]
+            if self.lighting[1][0]>0.0:
+                physics.model.vis.headlight.diffuse[:] = self.lighting[1].copy()
+                physics.model.vis.headlight.ambient[:] = self.lighting[1].copy()
+            else:
+                physics.model.vis.headlight.diffuse[:] = [0.6, 0.65, 0.75]
+                physics.model.vis.headlight.ambient[:] = [0.5, 0.5, 0.6]
+
+        # if isinstance(self.options, dict): #anr added for task options 
+        #     red_box_geom_id = physics.model.name2id('red_box', 'geom')
+        #     if 'box_size' in self.options and isinstance(self.options['box_size'], list) and len(self.options['box_size']) == 3:
+        #         physics.named.model.geom_size['red_box'] = self.options['box_size'].copy()
+        #     if 'box_color' in self.options and isinstance(self.options['box_color'], list) and len(self.options['box_color']) == 4:
+        #         physics.named.model.geom_rgba['red_box'] = self.options['box_color'].copy()
+    
         super().initialize_episode(physics)
 
     @staticmethod
