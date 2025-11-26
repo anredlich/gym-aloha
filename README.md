@@ -1,4 +1,4 @@
-# gym-aloha (anredlich fork)
+# gym-aloha
 
 A gym environment for ALOHA
 
@@ -6,11 +6,11 @@ Note: this readme is under construction.
 
 This fork adds:
 
-[Trossen AI Stationary robot](https://www.trossenrobotics.com/) simulation   
+[Trossen AI Stationary robot](https://www.trossenrobotics.com/) simulation:   
 TrossenAIStationaryTransferCube-v0   
 TrossenAIStationaryTransferCubeEE-v0 (EE=end effector)    
 
-Some new env options for the TrossenAIStationary Transfer Cube:   
+Also, some new env options for the TrossenAIStationary Transfer Cube:   
 - box_size  
 - box_pos   
 - box_color   
