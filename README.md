@@ -10,19 +10,21 @@ This fork adds:
 TrossenAIStationaryTransferCube-v0   
 TrossenAIStationaryTransferCubeEE-v0 (EE=end effector)    
 
-Also, some new env options for the TrossenAIStationary Transfer Cube:   
+(TrossenAI task classes and mujoco files were adapted from https://github.com/TrossenRobotics/trossen_arm_mujoco)
+
+New env options for the TrossenAIStationary Transfer Cube:   
 - box_size  
 - box_pos   
 - box_color   
-- arms_pos  
-- arms_ref  
 - tabletop  
 - backdrop  
 - lighting   
+- arms_pos  
+- arms_ref      
 
-The TrossenAI task classes and mujoco files were cut and pasted from https://github.com/TrossenRobotics/trossen_arm_mujoco
+Updated example.py with added image display, and new example_viewer.py. 
 
-See updated example.py and new example_viewer.py.   
+<br>
 
 <img src="trossen_ai_stationary_transfer_cube.gif" width="70%" alt="TrossenAI Stationary TransferCube demo"/>
 
@@ -69,16 +71,9 @@ import matplotlib.pyplot as plt
 obs_type='pixels_agent_pos' #'pixels' is default
 env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
              obs_type=obs_type,
-             #comment options for default
              box_size=[0.02,0.02,0.02],
-             #box_pos=[0.0,0.0,-0.02],
-             box_color=[0,1,0,1], #default is [1,0,0,1]
-             tabletop='wood', #'my_desktop' default is black
-             backdrop='my_backdrop', #default is none
-             #lighting=[[0.3,0.3,0.3],[0.3,0.3,0.3]],
-             #for sim to real calibration:
-             #arms_pos=[-0.4575, 0.0, 0.02, 0.4575, 0.0, 0.02], 
-             #arms_ref=[0,-0.015,0.015,0,0,0,0,-0.025,0.025,0,0,0],
+             box_color=[0,1,0,1],
+             tabletop='wood',
              )
 #env = gym.make("gym_aloha/TrossenAIStationaryTransferCubeEE-v0",
 #             obs_type=obs_type,box_size=[0.02,0.02,0.02],box_color=[0,1,0,1])
@@ -118,18 +113,17 @@ env.close()
 imageio.mimsave("example.mp4", np.stack(frames), fps=25)
 ```
 
-
 ## Description
-Aloha environment.
+Aloha environment including Trossen AI Stationary Robot simulation.
 
 Two tasks are available:
 - TransferCubeTask: The right arm needs to first pick up the red cube lying on the table, then place it inside the gripper of the other arm.
-- InsertionTask: The left and right arms need to pick up the socket and peg respectively, and then insert in mid-air so the peg touches the “pins” inside the socket.
+- InsertionTask: The left and right arms need to pick up the socket and peg respectively, and then insert in mid-air so the peg touches the “pins” inside the socket. (original Aloha only for now)
 
 ### Action Space
 The action space consists of continuous values for each arm and gripper, resulting in a 14-dimensional vector:
 - Six values for each arm's joint positions (absolute values).
-- One value for each gripper's position, normalized between 0 (closed) and 1 (open).
+- One value for each gripper's position, normalized between 0 (closed) and 1 (open), for original Aloha, and between 0 and 0.044 meters for Trossen AI Stationary.
 
 ### Observation Space
 Observations are provided as a dictionary with the following keys:
@@ -144,7 +138,7 @@ Observations are provided as a dictionary with the following keys:
     - 2 points if the box is lifted with the right gripper.
     - 3 points for transferring the box to the left gripper.
     - 4 points for a successful transfer without touching the table.
-- InsertionTask:
+- InsertionTask (original Aloha only for now):
     - 1 point for touching both the peg and a socket with the grippers.
     - 2 points for grasping both without dropping them.
     - 3 points if the peg is aligned with and touching the socket.
@@ -178,6 +172,26 @@ The arms and the items (block, peg, socket) start at a random position and angle
 
 * `visualization_height`: (int) The height of the visualized image. Default is `480`.
 
+### Arguments for TrossenAIStationary
+
+```python
+>>> import gymnasium as gym
+>>> import gym_aloha
+>>> env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0", obs_type="pixels_agent_pos")
+#or
+env = gym.make("gym_aloha/TrossenAIStationaryTransferCubeEE-v0", obs_type="pixels_agent_pos")
+```
+* All above Aloha options.
+* `box_size`: (list[float]) Half size of box in meters. Default is `[0.0125,0.0125,0.0125]`.
+* `box_pos`: (list[float]) Box position [x.y.z] in meters. Careful: will override random x,y,z from reset(). If z<0 will use -z and will not override x,y from reset(). Default is `[0.0,0.0,0.0125]`.
+* `box_color`: (list[float]) Box color. Default is red: `[1,0,0,1]`.
+* `tabletop`: (str) Choose tabletop texture. Current options are 'wood' and 'my_desktop'. To use your own, replace the .png file in <texture name="my_desktop_texture" ... in assets/trossen_ai_scene_joint.xml. Default is `'none'` which is a black tabletop.
+* `backdrop`: (str) Textured robot surround walls. To use your own, replace .png for back_wall_texture, left_wall_texture, and right_wall_texture in assets/trossen_ai_scene_joint.xml. Default is `'none'`.
+* `lighting`: (list) len=6 The first 3 terms set the level of both the top_light_1 and top_light_2
+diffuse levels in assets/trossen_ai_scene_joint. Second 3 terms set the both the headlight diffuse and ambient setting. If the 4th term is negative the headlight remains default. See 
+assets/trossen_ai_scene_joint for defaults. This option needs refinement.
+* `arms_pos`: (list[float]) len=6 Sets the position, in meters, of the [left,right] arm base positions: "left/root" and "right/root" pos in assets/trossen_ai_joint.xml. Used to match the simulated simulated and real robot arm positions. Default is `[-0.4575,-0.019,0.02,0.4575,-0.019,0.02]`.
+* `arms_ref`: (list[float]) len=12 Adds a qpos0 reference angle to each of the 6 left and 6 righ joints. This helps to match simulated and real robot joint positions which may differ because of gravity compensation and other factors. Default is `[0,0,0,0,0,0,0,0,0,0,0,0]`.
 
 ### 🔧 GPU Rendering (EGL)
 
@@ -230,29 +244,6 @@ xla_flags = os.environ.get('XLA_FLAGS', '')
 xla_flags += ' --xla_gpu_triton_gemm_any=True'
 os.environ['XLA_FLAGS'] = xla_flags
 ```
-
-
-## Contribute
-
-Instead of using `pip` directly, we use `poetry` for development purposes to easily track our dependencies.
-If you don't have it already, follow the [instructions](https://python-poetry.org/docs/#installation) to install it.
-
-Install the project with dev dependencies:
-```bash
-poetry install --all-extras
-```
-
-
-### Follow our style
-
-```bash
-# install pre-commit hooks
-pre-commit install
-
-# apply style and linter checks on staged files
-pre-commit
-```
-
 
 ## Acknowledgment
 
