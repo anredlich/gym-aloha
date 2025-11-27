@@ -12,15 +12,7 @@ TrossenAIStationaryTransferCubeEE-v0 (EE=end effector)
 
 (TrossenAI task classes and mujoco files were adapted from https://github.com/TrossenRobotics/trossen_arm_mujoco)
 
-New env options for the TrossenAIStationary Transfer Cube:   
-- box_size  
-- box_pos   
-- box_color   
-- tabletop  
-- backdrop  
-- lighting   
-- arms_pos  
-- arms_ref      
+Additional env arguments for the TrossenAIStationary Transfer Cube.   
 
 Updated example.py with added image display, and new example_viewer.py. 
 
