@@ -521,6 +521,10 @@ class TrossenAIStationaryTransferCubeTask(TrossenAIStationaryTask):
             "red_box",
             "left/gripper_follower_left",
         ) in all_contact_pairs
+        touch_left_gripper_right = ( #anr 1/12/26
+            "red_box",
+            "left/gripper_follower_right",
+        ) in all_contact_pairs
         touch_right_gripper = (
             "red_box",
             "right/gripper_follower_left",
@@ -539,4 +543,6 @@ class TrossenAIStationaryTransferCubeTask(TrossenAIStationaryTask):
         # successful transfer
         if touch_left_gripper and not touch_table:
             reward = 4
+        if touch_left_gripper_right and not touch_table:
+            reward = 5
         return reward

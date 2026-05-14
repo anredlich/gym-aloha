@@ -19,6 +19,8 @@ env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0", #TrossenAIStation
              #arms_pos=[-0.4575, 0.0, 0.02, 0.4575, 0.0, 0.02], #base position, left, right; default=[+-4575 -0.019 0.02]
              #arms_ref=[0,-0.015,0.015,0,0,0,0,-0.025,0.025,0,0,0], #left joints 0-5 ref, right joints 0-5 ref; default=[all zeros]
             )
+# env = gym.make("gym_aloha/AlohaTransferCube-v0",
+#               obs_type=obs_type)
 
 BOX_POSE[0]=env.unwrapped._env.physics.named.data.qpos[-7:]
 observation, info = env.reset() #seed=None,options='do_not_reset_BOX_POSE')

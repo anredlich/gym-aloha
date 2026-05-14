@@ -6,22 +6,22 @@ from gym_aloha.utils import plot_observation_images
 import matplotlib.pyplot as plt
 
 obs_type='pixels_agent_pos' #'pixels' is default
-env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
-             obs_type=obs_type,
-             #comment options for default
-             box_size=[0.02,0.02,0.02], #40mm box, default is 0.0125
-             #box_pos=[0.0,0.0,-0.02], #careful! will override reset() if z pos is >0
-             box_color=[0,1,0,1], #default is [1,0,0,1]
-             tabletop='wood', #'my_desktop' default is black
-             backdrop='my_backdrop', #default is none
-             #lighting=[[0.3,0.3,0.3],[0.3,0.3,0.3]],
-             #arms_pos=[-0.4575, 0.0, 0.02, 0.4575, 0.0, 0.02], #for sim to real calibration
-             #arms_ref=[0,-0.015,0.015,0,0,0,0,-0.025,0.025,0,0,0], #for sim to real calibration
-             )
+# env = gym.make("gym_aloha/TrossenAIStationaryTransferCube-v0",
+#              obs_type=obs_type,
+#              #comment options for default
+#              box_size=[0.02,0.02,0.02], #40mm box, default is 0.0125
+#              #box_pos=[0.0,0.0,-0.02], #careful! will override reset() if z pos is >0
+#              box_color=[0,1,0,1], #default is [1,0,0,1]
+#              tabletop='wood', #'my_desktop' default is black
+#              backdrop='my_backdrop', #default is none
+#              #lighting=[[0.3,0.3,0.3],[0.3,0.3,0.3]],
+#              #arms_pos=[-0.4575, 0.0, 0.02, 0.4575, 0.0, 0.02], #for sim to real calibration
+#              #arms_ref=[0,-0.015,0.015,0,0,0,0,-0.025,0.025,0,0,0], #for sim to real calibration
+#              )
 #env = gym.make("gym_aloha/TrossenAIStationaryTransferCubeEE-v0",
 #             obs_type=obs_type,box_size=[0.02,0.02,0.02],box_color=[0,1,0,1])
-#env = gym.make("gym_aloha/AlohaTransferCube-v0",
-#               obs_type=obs_type)
+env = gym.make("gym_aloha/AlohaTransferCube-v0",
+              obs_type=obs_type)
 
 observation, info = env.reset()
 frames = []
